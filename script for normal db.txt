@@ -1,0 +1,72 @@
+create table libraries
+(
+    id integer not null auto_increment
+	    primary key,
+    name_lib text,
+    adress text,
+    unique(name_lib,adress)
+);
+
+create table departaments
+(
+    id integer not null auto_increment
+            primary key,
+    name_dep text,
+    id_library integer,
+    constraint departaments_libraries_id_fk
+    foreign key (id_library)
+    references libraries (id)
+    on update cascade 
+    on delete cascade,
+    unique(name_dep, id_library)
+);
+
+create table books
+(
+    id  integer not null auto_increment
+            primary key,
+    name_book   text,
+    author text,
+    id_dep integer,
+        constraint books_departaments_id_fk
+	foreign key (id_dep)
+            references departaments (id)
+            on update cascade on delete cascade,
+	unique (name_book, author)
+);
+
+create table janres
+(
+    id    integer not null auto_increment
+            primary key,
+    janre text,
+	unique (janre)
+);
+
+create table staffers
+(
+    id      integer not null auto_increment
+            primary key,
+    name    text,
+    surname text,
+    id_dep  integer,
+        constraint staff_departaments_id_fk
+	foreign key (id_dep)
+            references departaments(id)
+            on update cascade on delete cascade
+);
+
+create table janres_book
+(
+    id_j integer,
+    id_b integer,
+	constraint janres_book_janres_id_fk
+	foreign key (id_j)
+            references janres(id)
+            on update cascade on delete cascade,
+        foreign key (id_b)
+            references books(id)
+            on update cascade on delete cascade,
+        unique (id_j, id_b)
+);
+
