@@ -3,8 +3,8 @@ create table libraries
     id integer not null auto_increment
 	    primary key,
     name_lib text,
-    adress text,
-    unique(name_lib,adress)
+    address_lib text,
+    unique(name_lib(50),address_lib(50))
 );
 
 create table departaments
@@ -18,7 +18,7 @@ create table departaments
     references libraries (id)
     on update cascade 
     on delete cascade,
-    unique(name_dep, id_library)
+    unique(name_dep(50), id_library)
 );
 
 create table books
@@ -32,7 +32,7 @@ create table books
 	foreign key (id_dep)
             references departaments (id)
             on update cascade on delete cascade,
-	unique (name_book, author)
+	unique (name_book(20), author(20))
 );
 
 create table janres
@@ -40,15 +40,15 @@ create table janres
     id    integer not null auto_increment
             primary key,
     janre text,
-	unique (janre)
+	unique (janre(20))
 );
 
 create table staffers
 (
     id      integer not null auto_increment
             primary key,
-    name    text,
-    surname text,
+    staff_name    text,
+    staff_surname text,
     id_dep  integer,
         constraint staff_departaments_id_fk
 	foreign key (id_dep)

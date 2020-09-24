@@ -7,7 +7,7 @@ names_nonorm = [description[0] for description in cursor_sqlite.description]
 conn_mysql = pymysql.connect(
     host='localhost',
     user='root',
-    password='123',
+    password='1234',
     db='trrp_v',
     charset='utf8mb4',
     autocommit=True
@@ -28,12 +28,12 @@ def clear_tables():
         cursor_mysql.execute("SET FOREIGN_KEY_CHECKS = 1")
 
 
-def find_diff(row1, row2):
-    diff=[]
-    for i in range(len(row1)):
-        if row1[i]!=row2[i]:
-            diff.append(i)
-    return diff
+#def find_diff(row1, row2):
+#    diff=[]
+#    for i in range(len(row1)):
+#        if row1[i]!=row2[i]:
+#            diff.append(i)
+#    return diff
 
 
 def find_table(field):
@@ -45,7 +45,6 @@ def find_table(field):
 
 def find_id(field, cell):
     table = find_table(field[0])
-    result = 0
     if table!=0:
         if len(cell)>1:
             if type(cell[1])==int:
@@ -58,7 +57,8 @@ def find_id(field, cell):
                 cursor_mysql.execute(f"select id from {table} where {field[0]}={cell[0]}")
             else:
                 cursor_mysql.execute(f"select id from {table} where {field[0]}='{cell[0]}'")
-    result = cursor_mysql.fetchall()[0][0]
+    tmp = cursor_mysql.fetchall()[0][0]
+    result = tmp if tmp else 0
     return result
 
 
@@ -128,5 +128,5 @@ def exporting():
 
 exporting()
 
-
+conn_sqlite.close()
 conn_mysql.close()
