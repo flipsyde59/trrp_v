@@ -3,7 +3,8 @@ import random
 import pymysql
 
 app = Flask(__name__)
-conn_mysql = pymysql.connect(host="localhost", user="root", password="1234", db="trrp_v", charset='utf8mb4', autocommit=True)
+conn_mysql = pymysql.connect(host="localhost", user="trrp", password="123456", db="trrp_v", charset='utf8mb4', autocommit=True)
+
 
 def tables(cursor_mysql):
     cursor_mysql.execute("show tables")
