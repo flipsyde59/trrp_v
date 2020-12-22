@@ -1,9 +1,66 @@
 from flask import Flask, request, abort, jsonify
-import random
 import pymysql
 
 app = Flask(__name__)
 conn_mysql = pymysql.connect(host="localhost", user="trrp", password="123456", db="trrp_v", charset='utf8mb4', autocommit=True)
+
+
+@app.route('/get-public-key', methods=['GET'])
+def get_public_key():
+    from Crypto.PublicKey import RSA
+    private_key = RSA.generate(2048)
+    export_key = private_key.export_key()
+    file_out = open(f"rsa_key.pem", "wb")
+    file_out.write(export_key)
+    file_out.close()
+    public_key = private_key.publickey().export_key()
+    return public_key, 200
+
+
+def rsa_decrypt_message(msg):
+    from Crypto.PublicKey import RSA
+    from Crypto.Cipher import PKCS1_OAEP
+    private_key = RSA.import_key(open(f"rsa_key.pem").read())
+    cipher = PKCS1_OAEP.new(private_key)
+    from base64 import b64decode
+    return cipher.decrypt(b64decode(msg))
+
+
+def des_decrypt_message(encrypted_message, iv, verbose=False):
+    from Crypto.Cipher import DES
+    file_in = open("des_key.bin", "rb")
+    key = file_in.read()
+    file_in.close()
+    from base64 import b64decode
+    cipher = DES.new(key, DES.MODE_OFB, iv=iv)
+    decrypted_message = cipher.decrypt(b64decode(encrypted_message))
+    if verbose:
+        print(f'Message: {encrypted_message}\n was decrypted to\n{decrypted_message}')
+    return decrypted_message
+
+#region 123
+@app.route('/post-symetric-key', methods=['POST'])
+def post_symetric_key():
+    if not request.json or not 'key' in request.json:
+        abort(400)
+    encrypted_key = request.json.get('key')
+    decrypted_key = rsa_decrypt_message(encrypted_key)
+    file_out = open(f"des_key.bin", "wb")
+    file_out.write(decrypted_key)
+    file_out.close()
+    return 'success get key', 200
+
+
+@app.route('/del-keys-files', methods=['GET'])
+def del_keys_files():
+    import os
+    file = f"rsa_key.pem"
+    if os.path.isfile(file):
+        os.remove(file)
+    file = f"des_key.bin"
+    if os.path.isfile(file):
+        os.remove(file)
+    return "files deleted", 200
 
 
 def tables(cursor_mysql):
@@ -32,9 +89,7 @@ def clear_tables():
         cursor_mysql.execute("SET FOREIGN_KEY_CHECKS = 0")
         cursor_mysql.execute(f"truncate table {table}")
         cursor_mysql.execute("SET FOREIGN_KEY_CHECKS = 1")
-    return "deleted", 200
-
-
+    return "data clearned", 200
 
 
 def find_table(field, names_norm):
@@ -62,14 +117,19 @@ def find_id(field, cell, cursor_mysql, names_norm):
     result = tmp if tmp else 0
     return result
 
-
-
+#endregion
 @app.route('/post-data', methods=['POST'])
 def post_data():
-    if not request.json or not 'names_nonorm' in request.json or not 'row' in request.json:
+    if not request.json or not 'key' in request.json or not 'msg' in request.json:
         abort(400)
-    names_nonorm = request.json.get('names_nonorm')
-    row = request.json.get('row')
+    enc_key = request.json.get('key')
+    dec_key = rsa_decrypt_message(enc_key)
+    enc_msg = request.json.get('msg')
+    import json
+    tmp = des_decrypt_message(enc_msg, dec_key)
+    dec_msg = json.loads(tmp)
+    names_nonorm = dec_msg.get('names_nonorm')
+    row = dec_msg.get('row')
     cursor_mysql = conn_mysql.cursor()
     names_norm = tables(cursor_mysql)
     ins_t = find_table(names_nonorm[0], names_norm)  # table in which do insert
