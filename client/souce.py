@@ -29,6 +29,22 @@ def des_encrypt_message(message, key, verbose=False):
     return encrypted_message, cipher.iv
 
 
+def monobit(bin_data: str):
+    import math
+    count = 0
+    for char in bin_data:
+        if char == '0':
+            count -= 1
+        else:
+            count += 1
+    sobs = count / math.sqrt(len(bin_data))
+    p_val = math.erfc(math.fabs(sobs) / math.sqrt(2))
+    return p_val
+
+def bin_str(s):
+    return  ''.join(format(ord(i), 'b') for i in s)
+
+
 def func():
     response = requests.get(f'http://{config["host"]}:{config["port"]}/get-public-key')
     public_key = response.content
@@ -43,6 +59,10 @@ def func():
         msg = json.dumps({'names_nonorm': names_nonorm, 'row': row })
         encrypt_msg, iv = des_encrypt_message(msg, key)
         encrypt_iv = rsa_encrypt_message(iv, public_key)
+        print('сообщение до шифрования: ', monobit(bin_str(msg)))
+        print('сообщение после шифрования: ', monobit(bin_str(b64encode(encrypt_msg).decode('utf-8'))))
+        print('ключ до шифрования: ', monobit(bin_str(b64encode(iv).decode('utf-8'))))
+        print('ключ после шифрования: ', monobit(bin_str(b64encode(encrypt_iv).decode('utf-8'))))
         response = requests.post(f'http://{config["host"]}:{config["port"]}/post-data', headers=headers, data=json.dumps({'key':b64encode(encrypt_iv).decode('utf-8'), 'msg':b64encode(encrypt_msg).decode('utf-8')}))
         print(response.text)
     print(requests.get(f'http://{config["host"]}:{config["port"]}/del-keys-files').text)
