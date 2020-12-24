@@ -1,8 +1,13 @@
 from flask import Flask, request, abort, jsonify
 import pymysql
+from base64 import b64decode
+from Crypto.PublicKey import RSA
+import json
 
 app = Flask(__name__)
-conn_mysql = pymysql.connect(host="localhost", user="trrp", password="123456", db="trrp_v", charset='utf8mb4', autocommit=True)
+with open("server_config.ini", "r") as read_file:
+    config = json.load(read_file)
+conn_mysql = pymysql.connect(host=config["host"], user=config["user"], password=config["password"], db=config["db"], charset='utf8mb4', autocommit=True)
 
 
 @app.route('/get-public-key', methods=['GET'])
@@ -18,11 +23,9 @@ def get_public_key():
 
 
 def rsa_decrypt_message(msg):
-    from Crypto.PublicKey import RSA
     from Crypto.Cipher import PKCS1_OAEP
     private_key = RSA.import_key(open(f"rsa_key.pem").read())
     cipher = PKCS1_OAEP.new(private_key)
-    from base64 import b64decode
     return cipher.decrypt(b64decode(msg))
 
 
@@ -31,14 +34,13 @@ def des_decrypt_message(encrypted_message, iv, verbose=False):
     file_in = open("des_key.bin", "rb")
     key = file_in.read()
     file_in.close()
-    from base64 import b64decode
     cipher = DES.new(key, DES.MODE_OFB, iv=iv)
     decrypted_message = cipher.decrypt(b64decode(encrypted_message))
     if verbose:
         print(f'Message: {encrypted_message}\n was decrypted to\n{decrypted_message}')
     return decrypted_message
 
-#region 123
+
 @app.route('/post-symetric-key', methods=['POST'])
 def post_symetric_key():
     if not request.json or not 'key' in request.json:
@@ -117,7 +119,7 @@ def find_id(field, cell, cursor_mysql, names_norm):
     result = tmp if tmp else 0
     return result
 
-#endregion
+
 @app.route('/post-data', methods=['POST'])
 def post_data():
     if not request.json or not 'key' in request.json or not 'msg' in request.json:
@@ -181,9 +183,9 @@ def post_data():
     except pymysql.err.IntegrityError or pymysql.err.ProgrammingError:
         pass
         #print('Данные не внесены. Ошибка: Такая книга уже с таким жанром')
-    return 'success', 200
+    return 'insert success', 200
 
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

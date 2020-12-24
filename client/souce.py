@@ -1,9 +1,10 @@
 import sqlite3
 import requests
 import json
+from base64 import b64encode
 
 
-conn_sqlite = sqlite3.Connection("client/sqlite.db")
+conn_sqlite = sqlite3.Connection("sqlite.db")
 cursor_sqlite = conn_sqlite.execute('select * from libraries')
 names_nonorm = [description[0] for description in cursor_sqlite.description]
 
@@ -29,24 +30,26 @@ def des_encrypt_message(message, key, verbose=False):
 
 
 def func():
-    response = requests.get('http://127.0.0.1:5000/get-public-key')
+    response = requests.get(f'http://{config["address"]}:{config["port"]}/get-public-key')
     public_key = response.content
     from Crypto.Random import get_random_bytes
     key = get_random_bytes(8)
     enc_key = rsa_encrypt_message(key, public_key)
     headers = {'Content-type': 'application/json'}
-    from base64 import b64encode
-    print(requests.post('http://127.0.0.1:5000/post-symetric-key', headers=headers,
+    print(requests.post(f'http://{config["address"]}:{config["port"]}/post-symetric-key', headers=headers,
                              data=json.dumps({'key': b64encode(enc_key).decode('utf-8')})).text)
-    print(requests.get('http://127.0.0.1:5000/clear-tables').text)
+    print(requests.get(f'http://{config["address"]}:{config["port"]}/clear-tables').text)
     for row in cursor_sqlite:
         msg = json.dumps({'names_nonorm': names_nonorm, 'row': row })
         encrypt_msg, iv = des_encrypt_message(msg, key)
         encrypt_iv = rsa_encrypt_message(iv, public_key)
-        response = requests.post('http://127.0.0.1:5000/post-data', headers=headers, data=json.dumps({'key':b64encode(encrypt_iv).decode('utf-8'), 'msg':b64encode(encrypt_msg).decode('utf-8')}))
-    print(requests.get('http://127.0.0.1:5000/del-keys-files').text)
+        response = requests.post(f'http://{config["address"]}:{config["port"]}/post-data', headers=headers, data=json.dumps({'key':b64encode(encrypt_iv).decode('utf-8'), 'msg':b64encode(encrypt_msg).decode('utf-8')}))
+        print(response.text)
+    print(requests.get(f'http://{config["address"]}:{config["port"]}/del-keys-files').text)
 
 
+with open("config.ini", "r") as read_file:
+    config = json.load(read_file)
 func()
 
 
