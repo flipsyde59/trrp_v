@@ -42,10 +42,10 @@ def des_decrypt_message(encrypted_message, iv, verbose=False):
 
 
 @app.route('/post-symetric-key', methods=['POST'])
-def post_symetric_key():
-    if not request.json or not 'key' in request.json:
+def post_symetric_key(k=None):
+    if k==None and (not request.json or not 'key' in request.json) :
         abort(400)
-    encrypted_key = request.json.get('key')
+    encrypted_key = request.json.get('key') if k==None else k
     decrypted_key = rsa_decrypt_message(encrypted_key)
     file_out = open(f"des_key.bin", "wb")
     file_out.write(decrypted_key)
@@ -121,12 +121,12 @@ def find_id(field, cell, cursor_mysql, names_norm):
 
 
 @app.route('/post-data', methods=['POST'])
-def post_data():
-    if not request.json or not 'key' in request.json or not 'msg' in request.json:
+def post_data(key=None, msg=None):
+    if (key==None or msg==None) and (not request.json or not 'key' in request.json or not 'msg' in request.json):
         abort(400)
-    enc_key = request.json.get('key')
+    enc_key = request.json.get('key') if key==None else key.decode('utf-8')
     dec_key = rsa_decrypt_message(enc_key)
-    enc_msg = request.json.get('msg')
+    enc_msg = request.json.get('msg') if msg==None else msg.decode('utf-8')
     import json
     tmp = des_decrypt_message(enc_msg, dec_key)
     dec_msg = json.loads(tmp)
@@ -185,7 +185,33 @@ def post_data():
         #print('Данные не внесены. Ошибка: Такая книга уже с таким жанром')
     return 'insert success', 200
 
+def socket_f():
+    import socket
 
+    sock = socket.socket()
+    sock.bind((config['host'], config["port"]))
+    sock.listen(1)
+    conn, addr = sock.accept()
+    while True:
+        sock.listen(1)
+        data = conn.recv(1024)
+        if data == b'get-public-key':
+            conn.send(get_public_key()[0])
+        elif data == b'post-symetric-key':
+            data = conn.recv(1024)
+            conn.send(post_symetric_key(data)[0].encode('utf-8'))
+        elif data == b'clear-tables':
+            conn.send(clear_tables()[0].encode('utf-8'))
+        elif data == b'post-data':
+            data_k = conn.recv(1024)
+            data_m = conn.recv(1024)
+            conn.send(post_data(data_k, data_m)[0].encode('utf-8'))
+        elif data == b'del-keys-files':
+            conn.send(del_keys_files()[0].encode('utf-8'))
+            conn.close()
+            sock.listen(1)
+            conn, addr = sock.accept()
 
+#socket_f()
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=config["port"])

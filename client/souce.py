@@ -30,27 +30,59 @@ def des_encrypt_message(message, key, verbose=False):
 
 
 def func():
-    response = requests.get(f'http://{config["address"]}:{config["port"]}/get-public-key')
+    response = requests.get(f'http://{config["host"]}:{config["port"]}/get-public-key')
     public_key = response.content
     from Crypto.Random import get_random_bytes
     key = get_random_bytes(8)
     enc_key = rsa_encrypt_message(key, public_key)
     headers = {'Content-type': 'application/json'}
-    print(requests.post(f'http://{config["address"]}:{config["port"]}/post-symetric-key', headers=headers,
+    print(requests.post(f'http://{config["host"]}:{config["port"]}/post-symetric-key', headers=headers,
                              data=json.dumps({'key': b64encode(enc_key).decode('utf-8')})).text)
-    print(requests.get(f'http://{config["address"]}:{config["port"]}/clear-tables').text)
+    print(requests.get(f'http://{config["host"]}:{config["port"]}/clear-tables').text)
     for row in cursor_sqlite:
         msg = json.dumps({'names_nonorm': names_nonorm, 'row': row })
         encrypt_msg, iv = des_encrypt_message(msg, key)
         encrypt_iv = rsa_encrypt_message(iv, public_key)
-        response = requests.post(f'http://{config["address"]}:{config["port"]}/post-data', headers=headers, data=json.dumps({'key':b64encode(encrypt_iv).decode('utf-8'), 'msg':b64encode(encrypt_msg).decode('utf-8')}))
+        response = requests.post(f'http://{config["host"]}:{config["port"]}/post-data', headers=headers, data=json.dumps({'key':b64encode(encrypt_iv).decode('utf-8'), 'msg':b64encode(encrypt_msg).decode('utf-8')}))
         print(response.text)
-    print(requests.get(f'http://{config["address"]}:{config["port"]}/del-keys-files').text)
+    print(requests.get(f'http://{config["host"]}:{config["port"]}/del-keys-files').text)
 
+
+def soc_func():
+    import socket
+
+    sock = socket.socket()
+    sock.connect((config["host"], config["port"]))
+    sock.send(b'get-public-key')
+    public_key = sock.recv(1024)
+    sock.send(b'post-symetric-key')
+    from Crypto.Random import get_random_bytes
+    key = get_random_bytes(8)
+    enc_key = rsa_encrypt_message(key, public_key)
+    sock.send(b64encode(enc_key))
+    resp = sock.recv(1024)
+    print(resp.decode('utf-8'))
+    sock.send(b'clear-tables')
+    resp = sock.recv(1024)
+    print(resp.decode('utf-8'))
+    for row in cursor_sqlite:
+        sock.send(b'post-data')
+        msg = json.dumps({'names_nonorm': names_nonorm, 'row': row})
+        encrypt_msg, iv = des_encrypt_message(msg, key)
+        encrypt_iv = rsa_encrypt_message(iv, public_key)
+        sock.send(b64encode(encrypt_iv))
+        sock.send(b64encode(encrypt_msg))
+        resp = sock.recv(1024)
+        print(resp.decode('utf-8'))
+    sock.send(b'del-keys-files')
+    resp = sock.recv(1024)
+    print(resp.decode('utf-8'))
+
+    sock.close()
 
 with open("config.ini", "r") as read_file:
     config = json.load(read_file)
 func()
-
+#soc_func()
 
 conn_sqlite.close()
