@@ -48,8 +48,10 @@ def bin_str(s):
 def func():
     response = requests.get(f'http://{config["host"]}:{config["port"]}/get-public-key')
     public_key = response.content
+    print('RSA = ',public_key)
     from Crypto.Random import get_random_bytes
     key = get_random_bytes(8)
+    print('DES = ', key)
     enc_key = rsa_encrypt_message(key, public_key)
     headers = {'Content-type': 'application/json'}
     print(requests.post(f'http://{config["host"]}:{config["port"]}/post-symetric-key', headers=headers,
@@ -102,7 +104,11 @@ def soc_func():
 
 with open("config.ini", "r") as read_file:
     config = json.load(read_file)
-func()
+
+try:
+    func()
+except requests.exceptions.ConnectionError:
+    print('connection with server error')
 #soc_func()
 
 conn_sqlite.close()

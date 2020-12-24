@@ -26,6 +26,7 @@ def rsa_decrypt_message(msg):
     from Crypto.Cipher import PKCS1_OAEP
     private_key = RSA.import_key(open(f"rsa_key.pem").read())
     cipher = PKCS1_OAEP.new(private_key)
+    print("RSA = ", private_key.export_key())
     return cipher.decrypt(b64decode(msg))
 
 
@@ -33,6 +34,7 @@ def des_decrypt_message(encrypted_message, iv, verbose=False):
     from Crypto.Cipher import DES
     file_in = open("des_key.bin", "rb")
     key = file_in.read()
+    print("DES = ", key)
     file_in.close()
     cipher = DES.new(key, DES.MODE_OFB, iv=iv)
     decrypted_message = cipher.decrypt(b64decode(encrypted_message))
